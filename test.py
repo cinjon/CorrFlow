@@ -6,11 +6,12 @@ import torch.nn.parallel
 import torch.nn.functional as F
 import numpy as np
 
-import functional.feeder.dataset.Davis2017 as D
 import functional.feeder.dataset.DavisLoader as DL
+from functional.feeder.dataset import gymnastics
 from functional.utils.f_boundary import db_eval_boundary
 from functional.utils.jaccard import db_eval_iou
 from models.corrflow import CorrFlow
+from 
 
 import logger
 
@@ -22,11 +23,16 @@ def main():
     for key, value in sorted(vars(args).items()):
         log.info(str(key) + ': ' + str(value))
 
-    TrainData = D.dataloader(args.datapath)
-    TrainImgLoader = torch.utils.data.DataLoader(
-        DL.myImageFloder(TrainData[0], TrainData[1], False),
-        batch_size=1, shuffle=False,num_workers=0,drop_last=False
-    )
+    if args.dataset == 'davis':
+        data = DL.dataloader(args.datapath)
+        data_loader = torch.utils.data.DataLoader(
+            DL.myImageFloder(data[0], data[1], False),
+            batch_size=1, shuffle=False, num_workers=args.workers, drop_last=False
+        )
+    elif args.dataset == 'gymnastics':
+        data_loader = gymnastics.get_dataloader(
+            batch_size=1, shuffle=False, num_workers=args.workers, drop_last=False
+        )
 
     model = CorrFlow(args)
     model = nn.DataParallel(model).cuda()
@@ -47,7 +53,7 @@ def main():
 
     start_full_time = time.time()
 
-    test(TrainImgLoader, model, log)
+    test(data_loader, model, log)
 
     log.info('full testing time = {:.2f} Hours'.format((time.time() - start_full_time) / 3600))
 
@@ -74,6 +80,8 @@ def test(dataloader, model, log):
             else:
                 anno_0 = output
             anno_1 = annotations[i+1]
+            # anno_0 is the first annotation or the output of the model.
+            # anno_1 is the next annotation.
 
             _, _, h, w = anno_0.size()
 
@@ -131,6 +139,10 @@ if __name__ == '__main__':
                         help='Path for checkpoints and logs')
     parser.add_argument('--resume', type=str, default=None,
                         help='Checkpoint file to resume')
+    parser.add_argument('--dataset', type=str, default='davis',
+                        help='which dataset to use')
+    parser.add_argument('--workers', type=int, default=0,
+                        help='number of workers')
 
     args = parser.parse_args()
 

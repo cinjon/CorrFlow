@@ -1,4 +1,4 @@
-
+import imageio
 from PIL import Image
 import numpy as np
 
@@ -14,7 +14,10 @@ def imread_indexed(filename):
   im = Image.open(filename)
 
   annotation = np.atleast_3d(im)[...,0]
-  return annotation,np.array(im.getpalette()).reshape((-1,3))
+  ret = np.array(im.getpalette()).reshape((-1,3))
+  # /checkpoint/cinjon/spaceofmotion/supercons/davis/DAVIS/Annotations/480p/gold-fish/00000.png (480, 854) (256, 3)
+  # print('imread: ', filename, annotation.shape, ret.shape)
+  return annotation, ret
 
 def imwrite_indexed(filename,array,color_palette=default_palette):
   """ Save indexed png."""
@@ -25,3 +28,9 @@ def imwrite_indexed(filename,array,color_palette=default_palette):
   im = Image.fromarray(array)
   im.putpalette(color_palette.ravel())
   im.save(filename, format='PNG')
+
+def write_img(filename, array):
+  imageio.imwrite(filename, array)
+  # im = Image.fromarray(array)
+  # im.save(filename, format='PNG')
+  
